@@ -1,0 +1,54 @@
+import numpy as np
+import pandas as pd
+from itertools import combinations
+from Orange.data import Table, Domain, StringVariable, ContinuousVariable
+
+# Convert Orange table to pandas DataFrame
+df = pd.DataFrame(in_data.X, columns=[var.name for var in in_data.domain.attributes])
+df = df.astype(bool)
+
+# Parameters
+min_support = 0.05
+min_confidence = 0.6
+num_rows = len(df)
+
+# Calculate item supports
+supports = df.sum() / num_rows
+frequent_items = supports[supports >= min_support].index
+
+rules_list = []
+
+# Generate pairwise association rules
+for a, b in combinations(frequent_items, 2):
+    support_ab = (df[a] & df[b]).sum() / num_rows
+    if support_ab >= min_support:
+        conf_ab = support_ab / supports[a]
+        conf_ba = support_ab / supports[b]
+        if conf_ab >= min_confidence:
+            lift_ab = conf_ab / supports[b]
+            rules_list.append((a, b, support_ab, conf_ab, lift_ab))
+        if conf_ba >= min_confidence:
+            lift_ba = conf_ba / supports[a]
+            rules_list.append((b, a, support_ab, conf_ba, lift_ba))
+
+# Convert to DataFrame
+rules = pd.DataFrame(rules_list, columns=["Antecedents", "Consequents", "Support", "Confidence", "Lift"])
+
+if rules.empty:
+    print("⚠️ No rules found. Try lowering support/confidence.")
+else:
+    # Create Orange domain for output
+    domain = Domain(
+        [],
+        metas=[
+            StringVariable("Antecedents"),
+            StringVariable("Consequents"),
+            ContinuousVariable("Support"),
+            ContinuousVariable("Confidence"),
+            ContinuousVariable("Lift")
+        ]
+    )
+
+    # Convert to Orange Table (✅ correct modern syntax)
+    metas = np.array(rules[["Antecedents", "Consequents", "Support", "Confidence", "Lift"]])
+    out_data = Table.from_list(domain, metas.tolist())

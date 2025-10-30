@@ -1,0 +1,26 @@
+import numpy as np
+from sklearn.cluster import MiniBatchKMeans
+from Orange.data import Table, Domain, ContinuousVariable
+
+# Convert Orange Table to NumPy array
+X = np.array([list(row) for row in in_data])
+
+# MiniBatch K-Means (scalable clustering)
+mbk = MiniBatchKMeans(n_clusters=3, batch_size=50, random_state=42)
+mbk.fit(X)
+
+# Cluster labels
+labels = mbk.labels_
+
+# Create a new domain with "Cluster" as an extra meta attribute
+new_domain = Domain(
+    in_data.domain.attributes,
+    in_data.domain.class_vars,
+    metas=[ContinuousVariable("Cluster")]
+)
+
+# Create new table properly using from_table()
+out_data = Table.from_table(new_domain, in_data)
+
+# Add cluster labels as meta values
+out_data.metas[:, 0] = labels

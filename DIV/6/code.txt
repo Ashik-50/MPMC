@@ -1,0 +1,34 @@
+import numpy as np
+from Orange.data import Table, Domain, ContinuousVariable
+
+# Input Orange Table
+X = in_data.X.copy()  # rows = instances, cols = features
+
+def haar_transform_row(row):
+    # zero-pad to next power of two
+    m = len(row)
+    n = 1 << (m - 1).bit_length()
+    out = np.zeros(n, dtype=float)
+    out[:m] = row
+
+    step = 1
+    while step < n:
+        for i in range(0, n, 2 * step):
+            for j in range(step):
+                avg = (out[i + j] + out[i + j + step]) / 2.0
+                diff = (out[i + j] - out[i + j + step]) / 2.0
+                out[i + j] = avg
+                out[i + j + step] = diff
+        step *= 2
+
+    return out
+
+# Apply Haar Transform row-wise
+Y = np.apply_along_axis(haar_transform_row, 1, X)
+
+# Build output domain with new feature names
+attrs = [ContinuousVariable(f"haar_{i+1}") for i in range(Y.shape[1])]
+domain = Domain(attrs, in_data.domain.class_vars, metas=in_data.domain.metas)
+
+# Output Orange Table
+out_data = Table(domain, Y, in_data.Y, in_data.metas)
